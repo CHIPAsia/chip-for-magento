@@ -1,0 +1,21 @@
+# PHP / Composer
+/vendor/
+composer.lock
+*.phar
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Tests / build artifacts
+/build/
+/tmp/
+*.log
+/var/
+
+# CI
+.phpunit.result.cache
+.phpunit.cache
