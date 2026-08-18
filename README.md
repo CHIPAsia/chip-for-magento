@@ -98,6 +98,32 @@ find . -name '*.php' -not -path './vendor/*' -exec php -l {} \;
 vendor/bin/phpcs --standard=Magento2 app/code/CHIPAsia/ChipPaymentGateway
 ```
 
+## Live Testing
+
+Tested on a live Magento 2.4.8-p5 instance (PHP 8.2) deployed on Dokploy
+against the CHIP production API:
+
+| Scenario | Result |
+|----------|--------|
+| GET /payment_methods/ | 200, all methods listed |
+| POST /purchases/ (create purchase) | 201, checkout_url returned |
+| GET /purchases/{id}/ after POST | 200 (Curl singleton POSTFIELDS leak fixed) |
+| GET /public_key/ | returns JSON-encoded PEM (parsed correctly) |
+| Webhook without signature | 401 |
+| Webhook with bad signature | 401 |
+| Webhook with invalid JSON | 400 |
+| Order paid | pending_payment → processing |
+| Order refunded | → closed |
+| Order cancelled/expired | → canceled |
+| Concurrent webhooks (same order) | serialized via GET_LOCK, no double-processing |
+| Signature verify (valid/tampered/empty) | true / false / false |
+
+### Known Magento CLI quirk
+
+`bin/magento config:set` and `cache:*` commands may report "no commands
+defined" on a fresh install until `setup:di:compile` has been run
+successfully (the compile is what registers the command classes).
+
 ## License
 
 OSL-3.0
