@@ -11,25 +11,34 @@
 
 namespace CHIPAsia\ChipPaymentGateway\Model;
 
+use Magento\Framework\App\ResourceConnection;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\OrderFactory;
-use Magento\Sales\Model\ResourceModel\Order as OrderResource;
 use Psr\Log\LoggerInterface;
 
 /**
  * Updates Magento order state/status based on CHIP payment status.
+ *
+ * Uses MySQL GET_LOCK/RELEASE_LOCK (same pattern as the CHIP WooCommerce
+ * plugin) so concurrent webhook callbacks for the same order are processed
+ * one at a time.
  */
 class OrderUpdater
 {
+    /**
+     * Lock acquisition timeout in seconds.
+     */
+    const LOCK_TIMEOUT = 15;
+
     /**
      * @var OrderFactory
      */
     protected $orderFactory;
 
     /**
-     * @var OrderResource
+     * @var ResourceConnection
      */
-    protected $orderResource;
+    protected $resourceConnection;
 
     /**
      * @var LoggerInterface
@@ -38,16 +47,16 @@ class OrderUpdater
 
     /**
      * @param OrderFactory $orderFactory
-     * @param OrderResource $orderResource
+     * @param ResourceConnection $resourceConnection
      * @param LoggerInterface $logger
      */
     public function __construct(
         OrderFactory $orderFactory,
-        OrderResource $orderResource,
+        ResourceConnection $resourceConnection,
         LoggerInterface $logger
     ) {
         $this->orderFactory = $orderFactory;
-        $this->orderResource = $orderResource;
+        $this->resourceConnection = $resourceConnection;
         $this->logger = $logger;
     }
 
@@ -64,6 +73,45 @@ class OrderUpdater
             return;
         }
 
+        $lockName = 'chip_payment_' . $order->getId();
+        $connection = $this->resourceConnection->getConnection();
+
+        try {
+            $lockAcquired = (bool) $connection->fetchOne(
+                'SELECT GET_LOCK(?, ?)',
+                array($lockName, self::LOCK_TIMEOUT)
+            );
+
+            if (!$lockAcquired) {
+                $this->logger->warning(
+                    'CHIP callback: could not acquire lock for order ' . $order->getIncrementId()
+                );
+                return;
+            }
+
+            $this->updateOrderState($order, $paymentData);
+
+            $connection->query('SELECT RELEASE_LOCK(?)', array($lockName));
+        } catch (\Exception $e) {
+            $this->logger->error(
+                'CHIP callback error for order ' . $order->getIncrementId() . ': ' . $e->getMessage()
+            );
+            try {
+                $connection->query('SELECT RELEASE_LOCK(?)', array($lockName));
+            } catch (\Exception $ignored) {
+            }
+        }
+    }
+
+    /**
+     * Apply the state transition (guarded by the lock).
+     *
+     * @param Order $order
+     * @param array $paymentData
+     * @return void
+     */
+    protected function updateOrderState(Order $order, $paymentData)
+    {
         $status = $paymentData['status'];
         $payment = $order->getPayment();
 
