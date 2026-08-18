@@ -151,22 +151,30 @@ class Api
     /**
      * Get public key for webhook signature verification.
      *
-     * The gateway may return the key either as a JSON wrapper
-     * ({"key": "-----BEGIN PUBLIC KEY-----..."}) or as the raw PEM
-     * body. Both forms are handled.
+     * The gateway returns the key as a JSON-encoded PEM string
+     * ("-----BEGIN PUBLIC KEY-----..."). Handle both the raw-body
+     * form and a JSON wrapper just in case.
      *
      * @return string|null
      */
     public function getPublicKey()
     {
-        $result = $this->call('GET', '/public_key/');
-        if (is_array($result) && isset($result['key'])) {
-            return $result['key'];
+        $raw = $this->callRaw('GET', '/public_key/');
+        if ($raw === null) {
+            return null;
         }
 
-        $raw = $this->callRaw('GET', '/public_key/');
-        if (is_string($raw) && strpos($raw, 'BEGIN PUBLIC KEY') !== false) {
-            return trim($raw);
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded) && isset($decoded['key'])) {
+            $key = $decoded['key'];
+        } elseif (is_string($decoded)) {
+            $key = $decoded;
+        } else {
+            $key = $raw;
+        }
+
+        if (is_string($key) && strpos($key, 'BEGIN PUBLIC KEY') !== false) {
+            return trim($key);
         }
 
         return null;
