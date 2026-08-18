@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="payment" translate="label" type="text" sortOrder="400" showInDefault="1" showInWebsite="1" showInStore="1">
+            <group id="chip" translate="label" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>CHIP Payment Gateway</label>
+                <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Enabled</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>payment/chip/active</config_path>
+                </field>
+                <field id="title" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Title</label>
+                    <config_path>payment/chip/title</config_path>
+                </field>
+                <field id="secret_key" translate="label" type="obscure" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Secret Key</label>
+                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
+                    <config_path>payment/chip/secret_key</config_path>
+                </field>
+                <field id="brand_id" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Brand ID</label>
+                    <config_path>payment/chip/brand_id</config_path>
+                </field>
+                <field id="payment_method_whitelist" translate="label" type="multiselect" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Payment Method Whitelist</label>
+                    <source_model>CHIPAsia\ChipPaymentGateway\Model\Config\Source\PaymentMethods</source_model>
+                    <config_path>payment/chip/payment_method_whitelist</config_path>
+                    <comment>Select which payment methods to allow. Leave empty to allow all available methods.</comment>
+                </field>
+                <field id="due_strict" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Due Strict</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>payment/chip/due_strict</config_path>
+                    <comment>Block payments after the due time has passed.</comment>
+                </field>
+                <field id="due_strict_timing" translate="label" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Due Strict Timing (minutes)</label>
+                    <config_path>payment/chip/due_strict_timing</config_path>
+                    <comment>Payment expiry time in minutes. Only applies when Due Strict is enabled.</comment>
+                </field>
+                <field id="send_receipt" translate="label" type="select" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Send Receipt</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>payment/chip/send_receipt</config_path>
+                </field>
+                <field id="debug" translate="label" type="select" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Debug</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>payment/chip/debug</config_path>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
