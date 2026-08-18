@@ -91,6 +91,20 @@ if ($orderFound) {
     echo "PASS: API error handling\n";
 }
 
+// 8. Secret key detection (same as Chip::getSecretKey / SignatureVerifier)
+// Ciphertext looks like "1:3:base64data"; plaintext does not.
+$cipher = '1:3:QWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=';
+$plain = 'sk_live_abcdef123456';
+$looksEncrypted = function ($v) {
+    return preg_match('/^[0-9]+:[0-9]+:/', $v) === 1;
+};
+if (!$looksEncrypted($cipher) || $looksEncrypted($plain)) {
+    echo "FAIL: secret key format detection\n";
+    $failures++;
+} else {
+    echo "PASS: secret key format detection\n";
+}
+
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
     exit(1);

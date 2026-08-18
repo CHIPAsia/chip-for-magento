@@ -13,6 +13,7 @@ namespace CHIPAsia\ChipPaymentGateway\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\Encryption\EncryptorInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -31,6 +32,11 @@ class SignatureVerifier
     protected $api;
 
     /**
+     * @var EncryptorInterface
+     */
+    protected $encryptor;
+
+    /**
      * @var LoggerInterface
      */
     protected $logger;
@@ -43,15 +49,18 @@ class SignatureVerifier
     /**
      * @param ScopeConfigInterface $scopeConfig
      * @param Api $api
+     * @param EncryptorInterface $encryptor
      * @param LoggerInterface $logger
      */
     public function __construct(
         ScopeConfigInterface $scopeConfig,
         Api $api,
+        EncryptorInterface $encryptor,
         LoggerInterface $logger
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->api = $api;
+        $this->encryptor = $encryptor;
         $this->logger = $logger;
     }
 
@@ -110,6 +119,13 @@ class SignatureVerifier
 
         if (empty($secretKey) || empty($brandId)) {
             return null;
+        }
+
+        if (preg_match('/^[0-9]+:[0-9]+:/', $secretKey)) {
+            $decrypted = $this->encryptor->decrypt($secretKey);
+            if ($decrypted !== '') {
+                $secretKey = $decrypted;
+            }
         }
 
         $this->api->setCredentials($secretKey, $brandId);

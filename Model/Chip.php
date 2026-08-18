@@ -18,6 +18,7 @@ use Magento\Framework\UrlInterface;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Framework\App\ProductMetadataInterface;
 use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Sales\Model\Order;
 use Magento\Framework\DataObject;
 
@@ -136,6 +137,11 @@ class Chip extends AbstractMethod
     protected $api;
 
     /**
+     * @var EncryptorInterface
+     */
+    protected $encryptor;
+
+    /**
      * @param \Magento\Framework\Model\Context $context
      * @param \Magento\Framework\Registry $registry
      * @param \Magento\Framework\Api\ExtensionAttributesFactory $extensionFactory
@@ -150,6 +156,7 @@ class Chip extends AbstractMethod
      * @param CheckoutSession $checkoutSession
      * @param ProductMetadataInterface $productMetadata
      * @param Api $api
+     * @param EncryptorInterface $encryptor
      */
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -165,7 +172,8 @@ class Chip extends AbstractMethod
         UrlInterface $urlBuilder = null,
         CheckoutSession $checkoutSession = null,
         ProductMetadataInterface $productMetadata = null,
-        Api $api = null
+        Api $api = null,
+        EncryptorInterface $encryptor = null
     ) {
         parent::__construct(
             $context,
@@ -184,6 +192,7 @@ class Chip extends AbstractMethod
         $this->checkoutSession = $checkoutSession;
         $this->productMetadata = $productMetadata;
         $this->api = $api;
+        $this->encryptor = $encryptor;
     }
 
     /**
@@ -199,7 +208,7 @@ class Chip extends AbstractMethod
         }
 
         $storeId = $quote ? $quote->getStoreId() : null;
-        $secretKey = $this->getConfigData('secret_key', $storeId);
+        $secretKey = $this->getSecretKey($storeId);
         $brandId = $this->getConfigData('brand_id', $storeId);
 
         return !empty($secretKey) && !empty($brandId);
@@ -252,7 +261,7 @@ class Chip extends AbstractMethod
     {
         $this->setStore($order->getStoreId());
 
-        $secretKey = $this->getConfigData('secret_key');
+        $secretKey = $this->getSecretKey();
         $brandId = $this->getConfigData('brand_id');
 
         if (empty($secretKey) || empty($brandId)) {
@@ -364,7 +373,7 @@ class Chip extends AbstractMethod
 
         $this->setStore($order->getStoreId());
 
-        $secretKey = $this->getConfigData('secret_key');
+        $secretKey = $this->getSecretKey();
         $brandId = $this->getConfigData('brand_id');
 
         if (empty($secretKey) || empty($brandId)) {
@@ -392,6 +401,34 @@ class Chip extends AbstractMethod
         $payment->setShouldCloseParentTransaction(true);
 
         return $this;
+    }
+
+    /**
+     * Get the CHIP secret key, decrypting it if necessary.
+     *
+     * The stored value is encrypted by Magento's Encrypted backend model.
+     * On some versions/paths the config pipeline returns the raw ciphertext
+     * and on others the decrypted value; decrypt only when the value looks
+     * like ciphertext (Magento ciphertext has a key:crypt prefix).
+     *
+     * @param int|null $storeId
+     * @return string
+     */
+    public function getSecretKey($storeId = null)
+    {
+        $value = $this->getConfigData('secret_key', $storeId);
+        if (empty($value)) {
+            return '';
+        }
+
+        if ($this->encryptor && preg_match('/^[0-9]+:[0-9]+:/', $value)) {
+            $decrypted = $this->encryptor->decrypt($value);
+            if ($decrypted !== '') {
+                return $decrypted;
+            }
+        }
+
+        return $value;
     }
 
     /**
