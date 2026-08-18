@@ -151,6 +151,10 @@ class Api
     /**
      * Get public key for webhook signature verification.
      *
+     * The gateway may return the key either as a JSON wrapper
+     * ({"key": "-----BEGIN PUBLIC KEY-----..."}) or as the raw PEM
+     * body. Both forms are handled.
+     *
      * @return string|null
      */
     public function getPublicKey()
@@ -159,6 +163,12 @@ class Api
         if (is_array($result) && isset($result['key'])) {
             return $result['key'];
         }
+
+        $raw = $this->callRaw('GET', '/public_key/');
+        if (is_string($raw) && strpos($raw, 'BEGIN PUBLIC KEY') !== false) {
+            return trim($raw);
+        }
+
         return null;
     }
 
@@ -190,6 +200,34 @@ class Api
      */
     protected function call($method, $path, $params = array())
     {
+        $body = $this->callRaw($method, $path, $params);
+        if ($body === null) {
+            return null;
+        }
+
+        $result = json_decode($body, true);
+        if (!is_array($result)) {
+            $this->logger->error('CHIP API invalid response: ' . $body);
+            return null;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Perform an API call and return the raw response body.
+     *
+     * Resets curl user options after every call because the Curl client is
+     * a shared singleton: CURLOPT_POSTFIELDS set for a JSON POST would leak
+     * into the next GET request and turn it into a POST (405 on the gateway).
+     *
+     * @param string $method
+     * @param string $path
+     * @param array $params
+     * @return string|null
+     */
+    protected function callRaw($method, $path, $params = array())
+    {
         $url = self::API_BASE_URL . $path;
 
         try {
@@ -201,11 +239,13 @@ class Api
             ));
 
             if ($method === 'GET') {
+                $this->curl->setOptions(array());
                 $this->curl->get($url);
             } else {
                 $body = json_encode($params);
                 $this->curl->setOption(CURLOPT_POSTFIELDS, $body);
                 $this->curl->post($url, array());
+                $this->curl->setOptions(array());
             }
 
             $status = $this->curl->getStatus();
@@ -224,13 +264,7 @@ class Api
                 return null;
             }
 
-            $result = json_decode($body, true);
-            if (!is_array($result)) {
-                $this->logger->error('CHIP API invalid response: ' . $body);
-                return null;
-            }
-
-            return $result;
+            return $body;
         } catch (\Exception $e) {
             $this->logger->error('CHIP API exception: ' . $e->getMessage());
             return null;
