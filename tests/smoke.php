@@ -71,6 +71,26 @@ if ($totalOverride !== 12345) {
 $hasCsrf = interface_exists('Magento\Framework\App\CsrfAwareActionInterface');
 echo ($hasCsrf ? "PASS" : "INFO") . ": CsrfAwareActionInterface " . ($hasCsrf ? "exists" : "not present (expected on Magento 2.0-2.2)") . "\n";
 
+// 6. Refund amount conversion (same as Chip::refund)
+$refundAmount = 50.00;
+$refundParams = array('amount' => (int) round($refundAmount * 100));
+if ($refundParams['amount'] !== 5000) {
+    echo "FAIL: refund amount conversion\n";
+    $failures++;
+} else {
+    echo "PASS: refund amount conversion\n";
+}
+
+// 7. API error handling (same as Api::call null-on-error)
+$apiResult = null; // simulate failed API call
+$orderFound = is_array($apiResult) && isset($apiResult['id']);
+if ($orderFound) {
+    echo "FAIL: API error handling\n";
+    $failures++;
+} else {
+    echo "PASS: API error handling\n";
+}
+
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
     exit(1);

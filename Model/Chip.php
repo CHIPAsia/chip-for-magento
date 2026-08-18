@@ -339,6 +339,62 @@ class Chip extends AbstractMethod
     }
 
     /**
+     * Refund the payment via CHIP API.
+     *
+     * @param \Magento\Payment\Model\InfoInterface $payment
+     * @param float $amount
+     * @return $this
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
+    public function refund(\Magento\Payment\Model\InfoInterface $payment, $amount)
+    {
+        $order = $payment->getOrder();
+        if (!$order || !$order->getId()) {
+            throw new \Magento\Framework\Exception\LocalizedException(
+                __('Unable to process refund: order not found.')
+            );
+        }
+
+        $purchaseId = $payment->getAdditionalInformation('chip_purchase_id');
+        if (empty($purchaseId)) {
+            throw new \Magento\Framework\Exception\LocalizedException(
+                __('Unable to process refund: CHIP purchase ID not found.')
+            );
+        }
+
+        $this->setStore($order->getStoreId());
+
+        $secretKey = $this->getConfigData('secret_key');
+        $brandId = $this->getConfigData('brand_id');
+
+        if (empty($secretKey) || empty($brandId)) {
+            throw new \Magento\Framework\Exception\LocalizedException(
+                __('CHIP payment gateway is not configured.')
+            );
+        }
+
+        $this->api->setCredentials($secretKey, $brandId);
+
+        $params = array(
+            'amount' => (int) round($amount * 100),
+        );
+
+        $result = $this->api->refundPayment($purchaseId, $params);
+
+        if (!is_array($result) || !isset($result['id'])) {
+            throw new \Magento\Framework\Exception\LocalizedException(
+                __('Unable to refund CHIP payment. Please try again.')
+            );
+        }
+
+        $payment->setTransactionId($result['id']);
+        $payment->setIsTransactionClosed(true);
+        $payment->setShouldCloseParentTransaction(true);
+
+        return $this;
+    }
+
+    /**
      * Get configured payment method whitelist.
      *
      * @return array
