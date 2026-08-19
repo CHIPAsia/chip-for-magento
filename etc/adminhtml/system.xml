@@ -49,6 +49,11 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <config_path>payment/chip/debug</config_path>
                 </field>
+                <field id="pending_threshold" translate="label" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Pending Order Check Threshold (minutes)</label>
+                    <config_path>payment/chip/pending_threshold</config_path>
+                    <comment>Orders stuck in pending_payment older than this are reconciled against the CHIP API by cron (every 15 minutes). Default 120.</comment>
+                </field>
             </group>
         </section>
     </system>

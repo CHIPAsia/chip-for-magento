@@ -18,6 +18,7 @@
                 <due_strict_timing>60</due_strict_timing>
                 <send_receipt>0</send_receipt>
                 <payment_method_whitelist></payment_method_whitelist>
+                <pending_threshold>120</pending_threshold>
             </chip>
         </payment>
     </default>
