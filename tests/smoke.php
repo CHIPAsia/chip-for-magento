@@ -105,6 +105,55 @@ if (!$looksEncrypted($cipher) || $looksEncrypted($plain)) {
     echo "PASS: secret key format detection\n";
 }
 
+// 9. Group resolution logic (same as Chip::resolvePaymentMethodGroups)
+// without API call - simulate the short-circuit and expansion branches.
+$duitnow_group = array('duitnow_qr', 'dnqr');
+$shopee_group = array('razer_shopeepay', 'shopee_pay');
+$card_group = array('visa', 'mastercard', 'maestro');
+
+// 9a. no group member -> untouched
+$wl = array('fpx', 'crypto_coin');
+$has_dnqr = count(array_intersect($wl, $duitnow_group)) > 0;
+$has_shopee = count(array_intersect($wl, $shopee_group)) > 0;
+$has_card = in_array('card', $wl, true);
+if ($has_dnqr || $has_shopee || $has_card || $wl !== array('fpx', 'crypto_coin')) {
+    echo "FAIL: short-circuit whitelist untouched\n";
+    $failures++;
+} else {
+    echo "PASS: short-circuit whitelist untouched\n";
+}
+
+// 9b. dnqr wins over duitnow_qr
+$available = array('fpx', 'duitnow_qr', 'dnqr', 'shopee_pay');
+$wl = array('duitnow_qr');
+$expanded = array_values(array_unique(array_merge($wl, $duitnow_group)));
+$resolved_dnqr = array_values(array_intersect($duitnow_group, $available));
+if (in_array('dnqr', $resolved_dnqr, true)) {
+    $resolved_dnqr = array_values(array_diff($resolved_dnqr, array('duitnow_qr')));
+}
+$all_groups = array_merge($duitnow_group, $shopee_group, $card_group, array('card'));
+$final = array_values(array_diff($expanded, $all_groups));
+$final = array_merge($final, $resolved_dnqr);
+if ($final !== array('dnqr')) {
+    echo "FAIL: dnqr priority resolution (got " . json_encode($final) . ")\n";
+    $failures++;
+} else {
+    echo "PASS: dnqr priority resolution\n";
+}
+
+// 9c. card expands to networks
+$wl = array('card');
+$expanded = array_values(array_unique(array_merge($wl, $card_group)));
+$all_groups = array_merge($duitnow_group, $shopee_group, $card_group, array('card'));
+$final = array_values(array_diff($expanded, $all_groups));
+$final = array_merge($final, array_values(array_intersect($card_group, array('visa', 'mastercard', 'maestro'))));
+if ($final !== array('visa', 'mastercard', 'maestro')) {
+    echo "FAIL: card expansion (got " . json_encode($final) . ")\n";
+    $failures++;
+} else {
+    echo "PASS: card expansion\n";
+}
+
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
     exit(1);

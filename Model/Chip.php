@@ -15,7 +15,6 @@ use Magento\Payment\Model\Method\AbstractMethod;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\UrlInterface;
-use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Framework\App\ProductMetadataInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Encryption\EncryptorInterface;
@@ -30,6 +29,20 @@ use Magento\Framework\DataObject;
 class Chip extends AbstractMethod
 {
     const CODE = 'chip';
+
+    /**
+     * Interchangeable payment-method groups (same as WooCommerce/GiveWP).
+     * dnqr is preferred over duitnow_qr; shopee_pay over razer_shopeepay.
+     */
+    const DUITNOW_GROUP = array('duitnow_qr', 'dnqr');
+
+    const SHOPEE_GROUP = array('razer_shopeepay', 'shopee_pay');
+
+    /**
+     * The 'card' key is an aggregator shown in admin; the gateway only
+     * accepts the individual card networks.
+     */
+    const CARD_GROUP = array('visa', 'mastercard', 'maestro');
 
     const PAYMENT_METHODS = array(
         'fpx' => 'FPX',
@@ -122,11 +135,6 @@ class Chip extends AbstractMethod
     protected $urlBuilder;
 
     /**
-     * @var CheckoutSession
-     */
-    protected $checkoutSession;
-
-    /**
      * @var ProductMetadataInterface
      */
     protected $productMetadata;
@@ -149,14 +157,11 @@ class Chip extends AbstractMethod
      * @param \Magento\Payment\Helper\Data $paymentData
      * @param ScopeConfigInterface $scopeConfig
      * @param \Magento\Payment\Model\Method\Logger $logger
-     * @param \Magento\Framework\Model\ResourceModel\AbstractResource $resource
-     * @param \Magento\Framework\Data\Collection\AbstractDb $resourceCollection
-     * @param array $data
      * @param UrlInterface $urlBuilder
-     * @param CheckoutSession $checkoutSession
      * @param ProductMetadataInterface $productMetadata
      * @param Api $api
      * @param EncryptorInterface $encryptor
+     * @param array $data
      */
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -166,14 +171,11 @@ class Chip extends AbstractMethod
         \Magento\Payment\Helper\Data $paymentData,
         ScopeConfigInterface $scopeConfig,
         \Magento\Payment\Model\Method\Logger $logger,
-        \Magento\Framework\Model\ResourceModel\AbstractResource $resource = null,
-        \Magento\Framework\Data\Collection\AbstractDb $resourceCollection = null,
-        array $data = array(),
-        UrlInterface $urlBuilder = null,
-        CheckoutSession $checkoutSession = null,
-        ProductMetadataInterface $productMetadata = null,
-        Api $api = null,
-        EncryptorInterface $encryptor = null
+        UrlInterface $urlBuilder,
+        ProductMetadataInterface $productMetadata,
+        Api $api,
+        EncryptorInterface $encryptor,
+        array $data = array()
     ) {
         parent::__construct(
             $context,
@@ -183,13 +185,12 @@ class Chip extends AbstractMethod
             $paymentData,
             $scopeConfig,
             $logger,
-            $resource,
-            $resourceCollection,
+            null,
+            null,
             $data
         );
 
         $this->urlBuilder = $urlBuilder;
-        $this->checkoutSession = $checkoutSession;
         $this->productMetadata = $productMetadata;
         $this->api = $api;
         $this->encryptor = $encryptor;
@@ -329,7 +330,11 @@ class Chip extends AbstractMethod
 
         $whitelist = $this->getPaymentMethodWhitelist();
         if (!empty($whitelist)) {
-            $params['payment_method_whitelist'] = $whitelist;
+            $params['payment_method_whitelist'] = $this->resolvePaymentMethodGroups(
+                $whitelist,
+                $order->getOrderCurrencyCode(),
+                (int) round($order->getGrandTotal() * 100)
+            );
         }
 
         $payment = $this->api->createPayment($params);
@@ -448,6 +453,71 @@ class Chip extends AbstractMethod
         }
 
         return array_filter(array_map('trim', explode(',', $value)));
+    }
+
+    /**
+     * Resolve the configured payment method whitelist against the merchant's
+     * actual /payment_methods/ response, with preferred-method priority for
+     * the DuitNow QR and Shopee Pay groups (same as WooCommerce/GiveWP):
+     *
+     *   - DuitNow QR group: dnqr wins when both {duitnow_qr, dnqr} are present.
+     *   - Shopee Pay group: shopee_pay wins when both {razer_shopeepay, shopee_pay}
+     *     are present; razer_shopeepay is the fallback.
+     *   - 'card' aggregator is expanded to the individual card networks
+     *     (visa/mastercard/maestro) which is what the gateway accepts.
+     *
+     * @param array  $whitelist Configured payment_method_whitelist.
+     * @param string $currency  Order currency code (e.g. 'MYR').
+     * @param int    $amount    Order total in sen (e.g. 12345 = RM 123.45).
+     * @return array Final whitelist to send to CHIP.
+     */
+    public function resolvePaymentMethodGroups($whitelist, $currency, $amount)
+    {
+        $has_dnqr = count(array_intersect($whitelist, self::DUITNOW_GROUP)) > 0;
+        $has_shopee = count(array_intersect($whitelist, self::SHOPEE_GROUP)) > 0;
+        $has_card = in_array('card', $whitelist, true);
+
+        // Short-circuit: no group member configured -> return untouched
+        // (group members can never appear unless the merchant configured them).
+        if (!$has_dnqr && !$has_shopee && !$has_card) {
+            return $whitelist;
+        }
+
+        $expanded = $whitelist;
+        if ($has_dnqr) {
+            $expanded = array_values(array_unique(array_merge($expanded, self::DUITNOW_GROUP)));
+        }
+        if ($has_shopee) {
+            $expanded = array_values(array_unique(array_merge($expanded, self::SHOPEE_GROUP)));
+        }
+        if ($has_card) {
+            $expanded = array_values(array_unique(array_merge($expanded, self::CARD_GROUP)));
+        }
+
+        $response = $this->api->getPaymentMethods($currency, 'en', $amount);
+        if (!is_array($response) || !isset($response['available_payment_methods'])) {
+            // API failed -> fallback to expanded whitelist unchanged.
+            return $expanded;
+        }
+        $available = $response['available_payment_methods'];
+
+        $resolved_dnqr = $has_dnqr ? array_values(array_intersect(self::DUITNOW_GROUP, $available)) : array();
+        $resolved_shopee = $has_shopee ? array_values(array_intersect(self::SHOPEE_GROUP, $available)) : array();
+        $resolved_card = $has_card ? array_values(array_intersect(self::CARD_GROUP, $available)) : array();
+
+        // Priority: dnqr wins over duitnow_qr; shopee_pay wins over razer_shopeepay.
+        if (in_array('dnqr', $resolved_dnqr, true)) {
+            $resolved_dnqr = array_values(array_diff($resolved_dnqr, array('duitnow_qr')));
+        }
+        if (in_array('shopee_pay', $resolved_shopee, true)) {
+            $resolved_shopee = array_values(array_diff($resolved_shopee, array('razer_shopeepay')));
+        }
+
+        $all_groups = array_merge(self::DUITNOW_GROUP, self::SHOPEE_GROUP, self::CARD_GROUP, array('card'));
+        $final = array_values(array_diff($expanded, $all_groups));
+        $final = array_merge($final, $resolved_dnqr, $resolved_shopee, $resolved_card);
+
+        return $final;
     }
 
     /**
