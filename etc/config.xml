@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <payment>
+            <chip>
+                <active>0</active>
+                <model>CHIPAsia\ChipPaymentGateway\Model\Chip</model>
+                <order_status>pending</order_status>
+                <title>CHIP</title>
+                <allowspecific>0</allowspecific>
+                <sort_order>1</sort_order>
+                <payment_action>authorize</payment_action>
+                <order_place_redirect_url>chip/payment/redirect</order_place_redirect_url>
+                <secret_key></secret_key>
+                <brand_id></brand_id>
+                <debug>0</debug>
+                <due_strict>1</due_strict>
+                <due_strict_timing>60</due_strict_timing>
+                <send_receipt>0</send_receipt>
+                <payment_method_whitelist></payment_method_whitelist>
+                <pending_threshold>120</pending_threshold>
+            </chip>
+        </payment>
+    </default>
+</config>
