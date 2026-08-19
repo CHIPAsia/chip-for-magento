@@ -195,8 +195,6 @@ online — use offline credit memos).
 
 ## 8. Open items (not yet implemented)
 
-- [ ] **Cron `PendingOrderChecker`** — poll CHIP for orders stuck in `pending_payment`
-  > N hours and reconcile the final state (CHIP API `GET /purchases/{id}/`).
 - [ ] **Admin order view block** (`Block/Payment/Info`) — show CHIP purchase id /
   transaction details on the admin order page.
 - [ ] **Void/capture release flows** — currently only refund; `capture`/`release`
@@ -208,9 +206,17 @@ online — use offline credit memos).
 - [ ] **Magento Marketplace submission prep** (composer package + README polish).
 - [ ] **CI workflow** (PHP lint + Magento coding standard) in `.github/workflows/`.
 
+## 9. Done (implemented)
+
+- [x] **Cron `PendingOrderChecker`** (`Cron/PendingOrderChecker.php`,
+  `etc/crontab.xml` job `chip_pending_order_check`, every 15 min) — finds orders in
+  `pending_payment` older than `payment/chip/pending_threshold` (default 120 min),
+  queries `GET /purchases/{id}/`, applies the final state via `OrderUpdater`
+  (same idempotent GET_LOCK path as the webhook). Verified live on 2.4.8-p5.
+
 ---
 
-## 9. Anti-patterns (avoid)
+## 10. Anti-patterns (avoid)
 
 - ❌ Direct `ObjectManager` use — constructor DI only.
 - ❌ Logging API keys / full webhook bodies with secrets — mask them.
@@ -222,9 +228,10 @@ online — use offline credit memos).
 
 ---
 
-## 10. Document history
+## 11. Document history
 
 | Date | Change | Author |
 |---|---|---|
 | 2026-06-13 | Initial plan drafted (doc-only PR, superseded by implementation) | AI-assisted (Claude) |
 | 2026-08-19 | Rewritten to match implemented module (single repo 2.0–2.4, whitelist approach, GET_LOCK idempotency, live-test results) | AI-assisted (Claude) |
+| 2026-08-19 | PendingOrderChecker cron implemented and live-verified; moved to Done | AI-assisted (Claude) |
