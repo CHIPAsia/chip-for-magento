@@ -71,16 +71,16 @@ Stores > Configuration > Sales > Payment Methods > CHIP Payment Gateway
 5. On success the order is set to `processing`; on failure/cancel it is
    cancelled. Customer is redirected back to the success/failure page.
 
-## Webhook URL
+## Callback URL
 
-```
-https://your-store.com/chip/payment/callback
-```
+The module sends `success_callback` (and the return URLs) automatically in
+every `POST /purchases/` call — **no manual registration in the CHIP
+dashboard is needed**.
 
-Return URL (customer lands here after paying): `https://your-store.com/chip/payment/returnaction`
-
-Register the callback URL in the CHIP dashboard. The callback verifies the
-`X-Signature` header against the CHIP public key before updating the order.
+- **Webhook/callback**: `https://your-store.com/chip/payment/callback` (sent
+  as `success_callback`; CHIP posts the purchase snapshot here, signed with
+  `X-Signature`, verified against the CHIP public key before updating the order)
+- **Return** (customer lands here after paying): `https://your-store.com/chip/payment/returnaction`
 
 ## Refunds
 
