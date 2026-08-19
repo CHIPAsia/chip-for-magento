@@ -22,7 +22,7 @@ Google Pay, Apple Pay, crypto) exposed to merchants as a single integration.
 
 ## 2. Version strategy (DECIDED — do not revisit)
 
-**One repo, one code base, one module covering Magento 2.0 – 2.4.4p5+ (PHP 5.6 – 8.5).**
+**One repo, one code base, one module covering Magento 2.0 – 2.4.4p5+ (PHP 7.0 – 8.5).**
 No per-version forks, no one-repo-per-version.
 
 Rationale (verified against `magento/magento2` tags 2.0.0 → 2.4.9):
@@ -38,7 +38,7 @@ Rationale (verified against `magento/magento2` tags 2.0.0 → 2.4.9):
 | CSRF on frontend POST exists only 2.3+ | `CallbackCsrf.php` implements `CsrfAwareActionInterface`, guarded by `interface_exists()`; 2.0–2.2 use `CallbackBase`. `CallbackCsrf.php` (has return types) only loads on 2.3+ (PHP 7.1+). |
 | `Curl::post()` only accepts arrays (form-encoded) on 2.0–2.2 | JSON body sent via `Curl::setOption(CURLOPT_POSTFIELDS, $json)` after `post()` — `_curlUserOptions` overrides POSTFIELDS on every version. Reset with `setOptions([])` after each call (shared-singleton leak — see bug history). |
 | `Magento\Framework\Serialize\Serializer\Json` exists only 2.2+ | Native `json_encode`/`json_decode`. |
-| PHP 5.6 vs PHP 8.0+ return-type variance | No scalar/return types in files loaded on all versions; `CallbackCsrf.php` only loads on 2.3+. |
+| PHP 7.0 vs PHP 8.0+ return-type variance | No scalar/return types in files loaded on all versions; `CallbackCsrf.php` only loads on 2.3+. |
 | Encrypted secret key | `Magento\Config\Model\Config\Backend\Encrypted` stores ciphertext (`\d+:\d+:...`). The read pipeline decrypts on some versions, not others; `getSecretKey()` decrypts only when the value looks like ciphertext, otherwise uses it as-is. |
 | `Config\TypePool` sensitive fields | `etc/di.xml` marks `payment/chip/secret_key` sensitive. |
 
@@ -120,7 +120,7 @@ app/code/CHIPAsia/ChipPaymentGateway/
 │   ├── Redirect.php           (create purchase + 302 to CHIP)
 │   ├── ReturnAction.php       (after CHIP redirect → success/failure)
 │   ├── Callback.php           (branch: CallbackCsrf on 2.3+, CallbackBase else)
-│   ├── CallbackBase.php       (webhook logic; no return types – PHP 5.6 safe)
+│   ├── CallbackBase.php       (webhook logic; no return types – PHP 7.0 safe)
 │   └── CallbackCsrf.php       (2.3+ CsrfAwareActionInterface; return types)
 ├── Observer/
 │   └── SaveOrderAfterSubmitObserver.php (registers chip_order for redirect)
@@ -201,7 +201,7 @@ online — use offline credit memos).
   endpoints exist in `Api` but are not wired to admin actions.
 - [ ] **Recurring/token flows** (`force_recurring`, `delete_recurring_token`) —
   API methods exist; not exposed in UI.
-- [ ] **Live test on older majors** — 2.0/2.2 (PHP 5.6/7.0) and 2.3 (PHP 7.1) still
+- [ ] **Live test on older majors** — 2.0/2.2 (PHP 7.0) and 2.3 (PHP 7.1) still
   need a live instance; static verification done against tags only.
 - [ ] **Magento Marketplace submission prep** (composer package + README polish).
 - [ ] **CI workflow** (PHP lint + Magento coding standard) in `.github/workflows/`.

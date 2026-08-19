@@ -10,7 +10,7 @@
  *    not exist there) is not implemented.
  *
  * NOTE: This file intentionally contains NO return type declarations so it
- * parses on PHP 5.6/7.0 (Magento 2.0 - 2.2). The CSRF-aware variant lives in
+ * parses on PHP 7.0 (Magento 2.0 - 2.2). The CSRF-aware variant lives in
  * CallbackCsrf.php which is only loaded on Magento 2.3+ (PHP 7.1+).
  *
  * @category  Payment

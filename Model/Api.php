@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  * CHIP API client.
  *
  * Handles all communication with the CHIP payment gateway.
- * Compatible with Magento 2.0 - 2.4 and PHP 5.6 - 8.4.
+ * Compatible with Magento 2.0 - 2.4 and PHP 7.0 - 8.5.
  */
 class Api
 {

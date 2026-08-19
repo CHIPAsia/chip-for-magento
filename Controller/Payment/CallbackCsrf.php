@@ -11,7 +11,7 @@
  *
  * NOTE: Return types match the interface exactly (?InvalidRequestException,
  * ?bool) which is mandatory on PHP 8.0+. This file never loads on
- * PHP 5.6/7.0 (Magento 2.0 - 2.2) thanks to the interface_exists guard in
+ * PHP 7.0 (Magento 2.0 - 2.2) thanks to the interface_exists guard in
  * Callback.php, so those PHP versions never see this syntax.
  *
  * @category  Payment

@@ -6,8 +6,8 @@ CHIP payment gateway module for Magento 2 (2.0 - 2.4).
 
 | Magento | PHP | Status |
 |---------|-----|--------|
-| 2.0.x | 5.5 - 7.0 | Supported |
-| 2.1.x | 5.6 - 7.0 | Supported |
+| 2.0.x | 7.0 | Supported |
+| 2.1.x | 7.0 | Supported |
 | 2.2.x | 7.0 - 7.1 | Supported |
 | 2.3.x | 7.1 - 7.4 | Supported |
 | 2.4.x | 7.3 - 8.5 | Supported |
@@ -24,7 +24,7 @@ One module covers all Magento 2 versions. The Magento Payment Gateway API
   2.0 - 2.2. JSON bodies are sent via `Curl::setOption(CURLOPT_POSTFIELDS, ...)`
   which works on all versions.
 - **PHP syntax**: no scalar type hints, no return types, no null coalescing
-  operator - compatible with PHP 5.6 through 8.5.
+  operator - compatible with PHP 7.0 through 8.5.
 
 ## Installation
 
