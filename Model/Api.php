@@ -138,6 +138,29 @@ class Api
     }
 
     /**
+     * Charge a payment using a saved recurring token.
+     *
+     * @param string $purchaseId
+     * @param array $params
+     * @return array|null
+     */
+    public function chargePayment($purchaseId, $params)
+    {
+        return $this->call('POST', '/purchases/' . $purchaseId . '/charge/', $params);
+    }
+
+    /**
+     * Delete a recurring token.
+     *
+     * @param string $purchaseId
+     * @return array|null
+     */
+    public function deleteRecurringToken($purchaseId)
+    {
+        return $this->call('POST', '/purchases/' . $purchaseId . '/delete_recurring_token/');
+    }
+
+    /**
      * Cancel a payment.
      *
      * @param string $purchaseId

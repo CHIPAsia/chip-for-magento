@@ -21,6 +21,7 @@ use Magento\Sales\Model\ResourceModel\Order as OrderResource;
 use CHIPAsia\ChipPaymentGateway\Model\Api;
 use CHIPAsia\ChipPaymentGateway\Model\SignatureVerifier;
 use CHIPAsia\ChipPaymentGateway\Model\OrderUpdater;
+use CHIPAsia\ChipPaymentGateway\Model\TokenManager;
 
 /**
  * Base callback logic shared by all Magento versions.
@@ -53,12 +54,18 @@ class CallbackBase extends Action
     protected $orderUpdater;
 
     /**
+     * @var TokenManager
+     */
+    protected $tokenManager;
+
+    /**
      * @param Context $context
      * @param OrderFactory $orderFactory
      * @param OrderResource $orderResource
      * @param Api $api
      * @param SignatureVerifier $signatureVerifier
      * @param OrderUpdater $orderUpdater
+     * @param TokenManager $tokenManager
      */
     public function __construct(
         Context $context,
@@ -66,13 +73,15 @@ class CallbackBase extends Action
         OrderResource $orderResource,
         Api $api,
         SignatureVerifier $signatureVerifier,
-        OrderUpdater $orderUpdater
+        OrderUpdater $orderUpdater,
+        TokenManager $tokenManager
     ) {
         $this->orderFactory = $orderFactory;
         $this->orderResource = $orderResource;
         $this->api = $api;
         $this->signatureVerifier = $signatureVerifier;
         $this->orderUpdater = $orderUpdater;
+        $this->tokenManager = $tokenManager;
         parent::__construct($context);
     }
 
@@ -105,6 +114,11 @@ class CallbackBase extends Action
         $order = $this->orderFactory->create()->loadByIncrementId($reference);
         if (!$order || !$order->getId()) {
             return $this->getResponse()->setHttpResponseCode(404);
+        }
+
+        // Store a recurring token (saved card) when CHIP reports one.
+        if (!empty($paymentData['is_recurring_token']) || !empty($paymentData['recurring_token'])) {
+            $this->tokenManager->storeRecurringToken($paymentData, $order->getPayment());
         }
 
         $this->orderUpdater->update($order, $paymentData);

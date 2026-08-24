@@ -54,6 +54,12 @@
                     <config_path>payment/chip/pending_threshold</config_path>
                     <comment>Orders stuck in pending_payment older than this are reconciled against the CHIP API by cron (every 15 minutes). Default 120.</comment>
                 </field>
+                <field id="enable_tokenization" translate="label" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Enable Saved Cards (Tokenization)</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>payment/chip/enable_tokenization</config_path>
+                    <comment>Allow customers to save their card for future use. When enabled, card payments are tokenized (force_recurring) and stored as Magento Vault saved cards.</comment>
+                </field>
             </group>
         </section>
     </system>
