@@ -130,8 +130,11 @@ class OrderUpdater
                 break;
 
             case 'cancelled':
+            case 'canceled':
             case 'expired':
             case 'failed':
+            case 'error':
+            case 'rejected':
                 if ($order->getState() === Order::STATE_PENDING_PAYMENT
                     || $order->getState() === Order::STATE_NEW
                 ) {

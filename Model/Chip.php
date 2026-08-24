@@ -59,6 +59,8 @@ class Chip extends AbstractMethod
         'crypto_coin' => 'Crypto Coin',
     );
 
+    const MODULE_VERSION = '1.0.0';
+
     /**
      * @var string
      */
@@ -552,13 +554,14 @@ class Chip extends AbstractMethod
     /**
      * Get module version.
      *
+     * Uses a hardcoded constant instead of ProductMetadata::getVersion(),
+     * which triggers Composer and fails when the web process (www-data)
+     * cannot read ~/.composer/config.json.
+     *
      * @return string
      */
     protected function getModuleVersion()
     {
-        if ($this->productMetadata) {
-            return $this->productMetadata->getVersion();
-        }
-        return '2.x';
+        return self::MODULE_VERSION;
     }
 }
