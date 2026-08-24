@@ -59,6 +59,7 @@ Stores > Configuration > Sales > Payment Methods > CHIP Payment Gateway
 | Due Strict Timing | Payment expiry in minutes |
 | Send Receipt | Send receipt email from CHIP |
 | Debug | Log API requests to `var/log/chip.log` |
+| Enable Saved Cards (Tokenization) | Allow customers to save their card for future use (stored as Magento Vault) |
 
 ## How it works
 
@@ -87,6 +88,28 @@ dashboard is needed**.
 Refunds are processed from the Magento admin (Sales > Orders > Invoice >
 Credit Memo). The module calls `POST /purchases/{id}/refund/` with the
 refund amount.
+
+## Saved Cards (Tokenization)
+
+When **Enable Saved Cards** is on, card payments are tokenized via CHIP's
+recurring-token flow and stored as Magento Vault saved cards:
+
+1. The module sends `force_recurring` on the purchase, so CHIP tokenizes the
+   card. The customer opts in on the CHIP payment page (the "save card"
+   checkbox lives there, not in Magento).
+2. When CHIP reports `is_recurring_token` / `recurring_token` in the webhook,
+   the module stores it as a Vault `PaymentToken` (card brand, last 4, expiry).
+3. Saved cards appear at checkout under **Stored Cards (CHIP)** for one-click
+   payment.
+
+Renewal / saved-card charging is available programmatically via
+`Chip::chargeWithToken($order, $recurringToken)`, which creates a purchase
+and charges it with the saved token (`POST /purchases/{id}/charge/`).
+
+> **Note:** Magento CE has no native recurring-billing/subscription feature
+> (unlike WooCommerce Subscriptions). Vault provides saved cards (one-click
+> checkout). Automatic subscription renewal requires a third-party
+> subscription extension or a custom cron that calls `chargeWithToken()`.
 
 ## Development
 

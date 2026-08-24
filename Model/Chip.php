@@ -64,7 +64,7 @@ class Chip extends AbstractMethod
         'crypto_coin' => 'Crypto Coin',
     );
 
-    const MODULE_VERSION = '1.0.0';
+    const MODULE_VERSION = '1.1.0';
 
     /**
      * @var string
