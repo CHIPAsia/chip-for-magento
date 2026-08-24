@@ -10,14 +10,22 @@
 define(
     [
         'Magento_Checkout/js/view/payment/default',
+        'Magento_Checkout/js/model/payment/renderer-list',
         'mage/url'
     ],
-    function (Component, url) {
+    function (Component, rendererList, url) {
         'use strict';
+
+        rendererList.push(
+            {
+                type: 'chip',
+                component: 'CHIPAsia_ChipPaymentGateway/js/view/payment/method-renderer/chip'
+            }
+        );
 
         return Component.extend({
             defaults: {
-                template: 'Magento_Checkout/payment/default'
+                template: 'CHIPAsia_ChipPaymentGateway/payment/chip'
             },
 
             /**

@@ -7,4 +7,43 @@
             </argument>
         </arguments>
     </type>
+
+    <!-- CHIP Vault payment method (saved cards) -->
+    <virtualType name="ChipVaultPaymentConfig" type="Magento\Payment\Gateway\Config\Config">
+        <arguments>
+            <argument name="methodCode" xsi:type="const">CHIPAsia\ChipPaymentGateway\Model\Chip::VAULT_CODE</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="ChipVaultPaymentValueHandler" type="VaultPaymentDefaultValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">ChipVaultPaymentConfig</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="ChipVaultPaymentValueHandlerPool" type="VaultPaymentValueHandlerPool">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="default" xsi:type="string">ChipVaultPaymentValueHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="ChipVaultFacade" type="Magento\Vault\Model\Method\Vault">
+        <arguments>
+            <argument name="config" xsi:type="object">ChipVaultPaymentConfig</argument>
+            <argument name="valueHandlerPool" xsi:type="object">ChipVaultPaymentValueHandlerPool</argument>
+            <argument name="vaultProvider" xsi:type="object">CHIPAsia\ChipPaymentGateway\Model\Chip</argument>
+            <argument name="code" xsi:type="const">CHIPAsia\ChipPaymentGateway\Model\Chip::VAULT_CODE</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Token UI component provider: renders saved CHIP cards at checkout -->
+    <type name="Magento\Vault\Model\Ui\TokensConfigProvider">
+        <arguments>
+            <argument name="tokenUiComponentProviders" xsi:type="array">
+                <item name="chip" xsi:type="object">CHIPAsia\ChipPaymentGateway\Model\Ui\TokenUiComponentProvider</item>
+            </argument>
+        </arguments>
+    </type>
 </config>

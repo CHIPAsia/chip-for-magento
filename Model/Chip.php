@@ -31,6 +31,11 @@ class Chip extends AbstractMethod
     const CODE = 'chip';
 
     /**
+     * Vault (saved card) payment method code.
+     */
+    const VAULT_CODE = 'chip_vault';
+
+    /**
      * Interchangeable payment-method groups (same as WooCommerce/GiveWP).
      * dnqr is preferred over duitnow_qr; shopee_pay over razer_shopeepay.
      */
@@ -58,6 +63,8 @@ class Chip extends AbstractMethod
         'duitnow_qr' => 'DuitNow QR',
         'crypto_coin' => 'Crypto Coin',
     );
+
+    const MODULE_VERSION = '1.1.0';
 
     /**
      * @var string
@@ -285,7 +292,7 @@ class Chip extends AbstractMethod
             'success_redirect' => $returnUrl,
             'failure_redirect' => $returnUrl,
             'cancel_redirect' => $returnUrl,
-            'force_recurring' => false,
+            'force_recurring' => $this->isTokenizationEnabled(),
             'send_receipt' => (bool) $this->getConfigData('send_receipt'),
             'creator_agent' => 'Magento: ' . $this->getModuleVersion(),
             'reference' => $order->getIncrementId(),
@@ -552,13 +559,89 @@ class Chip extends AbstractMethod
     /**
      * Get module version.
      *
+     * Uses a hardcoded constant instead of ProductMetadata::getVersion(),
+     * which triggers Composer and fails when the web process (www-data)
+     * cannot read ~/.composer/config.json.
+     *
      * @return string
      */
     protected function getModuleVersion()
     {
-        if ($this->productMetadata) {
-            return $this->productMetadata->getVersion();
+        return self::MODULE_VERSION;
+    }
+
+    /**
+     * Whether saved-card tokenization is enabled.
+     *
+     * @return bool
+     */
+    public function isTokenizationEnabled()
+    {
+        return (bool) $this->getConfigData('enable_tokenization');
+    }
+
+    /**
+     * Charge a saved recurring token (renewal / saved-card checkout).
+     *
+     * Creates a new CHIP purchase for the given order and immediately
+     * charges it with the saved recurring token.
+     *
+     * @param Order $order
+     * @param string $recurringToken
+     * @return array|null The charged purchase object, or null on failure.
+     * @throws LocalizedException
+     */
+    public function chargeWithToken(Order $order, $recurringToken)
+    {
+        $this->setStore($order->getStoreId());
+
+        $secretKey = $this->getSecretKey();
+        $brandId = $this->getConfigData('brand_id');
+
+        if (empty($secretKey) || empty($brandId)) {
+            throw new LocalizedException(__('CHIP payment gateway is not configured.'));
         }
-        return '2.x';
+
+        $this->api->setCredentials($secretKey, $brandId);
+
+        $storeId = $order->getStoreId();
+        $baseUrl = $this->urlBuilder->getBaseUrl(array('_scope' => $storeId));
+        $callbackUrl = $baseUrl . 'chip/payment/callback';
+
+        $billingAddress = $order->getBillingAddress();
+
+        $params = array(
+            'success_callback' => $callbackUrl,
+            'send_receipt' => (bool) $this->getConfigData('send_receipt'),
+            'creator_agent' => 'Magento: ' . $this->getModuleVersion(),
+            'reference' => $order->getIncrementId(),
+            'platform' => 'magento',
+            'purchase' => array(
+                'total_override' => (int) round($order->getGrandTotal() * 100),
+                'due_strict' => (bool) $this->getConfigData('due_strict'),
+                'timezone' => 'Asia/Kuala_Lumpur',
+                'currency' => $order->getOrderCurrencyCode(),
+                'language' => 'en',
+                'products' => $this->getProducts($order),
+            ),
+            'brand_id' => $brandId,
+            'client' => array(
+                'email' => $order->getCustomerEmail(),
+                'full_name' => $billingAddress ? substr(
+                    trim($billingAddress->getFirstname() . ' ' . $billingAddress->getLastname()),
+                    0,
+                    128
+                ) : '',
+            ),
+        );
+
+        $payment = $this->api->createPayment($params);
+        if (!is_array($payment) || !isset($payment['id'])) {
+            throw new LocalizedException(__('Unable to create CHIP payment. Please try again.'));
+        }
+
+        $charge = $this->api->chargePayment($payment['id'], array('recurring_token' => $recurringToken));
+
+        return $charge;
     }
 }

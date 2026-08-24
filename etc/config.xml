@@ -19,7 +19,15 @@
                 <send_receipt>0</send_receipt>
                 <payment_method_whitelist></payment_method_whitelist>
                 <pending_threshold>120</pending_threshold>
+                <enable_tokenization>0</enable_tokenization>
+                <can_authorize_vault>1</can_authorize_vault>
+                <can_capture_vault>1</can_capture_vault>
             </chip>
+            <chip_vault>
+                <model>ChipVaultFacade</model>
+                <title>Stored Cards (CHIP)</title>
+                <active>1</active>
+            </chip_vault>
         </payment>
     </default>
 </config>

@@ -138,6 +138,29 @@ class Api
     }
 
     /**
+     * Charge a payment using a saved recurring token.
+     *
+     * @param string $purchaseId
+     * @param array $params
+     * @return array|null
+     */
+    public function chargePayment($purchaseId, $params)
+    {
+        return $this->call('POST', '/purchases/' . $purchaseId . '/charge/', $params);
+    }
+
+    /**
+     * Delete a recurring token.
+     *
+     * @param string $purchaseId
+     * @return array|null
+     */
+    public function deleteRecurringToken($purchaseId)
+    {
+        return $this->call('POST', '/purchases/' . $purchaseId . '/delete_recurring_token/');
+    }
+
+    /**
      * Cancel a payment.
      *
      * @param string $purchaseId
@@ -215,7 +238,7 @@ class Api
 
         $result = json_decode($body, true);
         if (!is_array($result)) {
-            $this->logger->error('CHIP API invalid response: ' . $body);
+            $this->logger->error('CHIP API invalid response: ' . $this->redactSensitive($body));
             return null;
         }
 
@@ -267,7 +290,8 @@ class Api
 
             if ($status < 200 || $status >= 300) {
                 $this->logger->error(
-                    'CHIP API error: ' . $method . ' ' . $path . ' status=' . $status . ' body=' . $body
+                    'CHIP API error: ' . $method . ' ' . $path . ' status=' . $status
+                    . ' body=' . $this->redactSensitive($body)
                 );
                 return null;
             }
@@ -277,5 +301,52 @@ class Api
             $this->logger->error('CHIP API exception: ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Redact sensitive fields from a serialized API response before logging.
+     *
+     * The CHIP purchase response can contain cardholder name and masked PAN
+     * (PII). Masked PAN is not a full card number, but the cardholder name is
+     * personal data that should not land in debug/error logs. Replace those
+     * values with a placeholder so logging stays safe to enable.
+     *
+     * Handles both JSON ("cardholder_name":"John Doe") and print_r
+     * ([cardholder_name] => John Doe) serialization forms.
+     *
+     * @param string $text Serialized response text.
+     * @return string Redacted text.
+     */
+    protected function redactSensitive($text)
+    {
+        if (!is_string($text)) {
+            return $text;
+        }
+
+        // JSON form: "cardholder_name":"John Doe" (value is quoted).
+        $text = preg_replace(
+            '/(["\']cardholder_name["\']\s*[:=]\s*["\']?)([^,"\']*)(["\']?)/i',
+            '$1[REDACTED]$3',
+            $text
+        );
+        $text = preg_replace(
+            '/(["\']masked_pan["\']\s*[:=]\s*["\']?)([^,"\']*)(["\']?)/i',
+            '$1[REDACTED]$3',
+            $text
+        );
+
+        // print_r form: [cardholder_name] => John Doe
+        $text = preg_replace(
+            '/(\[cardholder_name\]\s*=>\s*)([^\n]+)/i',
+            '$1[REDACTED]',
+            $text
+        );
+        $text = preg_replace(
+            '/(\[masked_pan\]\s*=>\s*)([^\n]+)/i',
+            '$1[REDACTED]',
+            $text
+        );
+
+        return $text;
     }
 }
