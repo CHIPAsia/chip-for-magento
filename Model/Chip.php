@@ -209,7 +209,7 @@ class Chip extends AbstractMethod
      * @param \Magento\Quote\Api\Data\CartInterface $quote
      * @return bool
      */
-    public function isAvailable(\Magento\Quote\Api\Data\CartInterface $quote = null)
+    public function isAvailable(?\Magento\Quote\Api\Data\CartInterface $quote = null)
     {
         if (!parent::isAvailable($quote)) {
             return false;
