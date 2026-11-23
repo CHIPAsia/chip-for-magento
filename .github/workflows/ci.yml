@@ -79,9 +79,6 @@ jobs:
           coverage: none
 
       - name: Fail when php -l reports a deprecation
-        # Informational until the implicit-nullable fix on main lands (#5):
-        # the step fails and prints the notice, but does not block the PR.
-        continue-on-error: true
         run: |
           hits=0
           while IFS= read -r -d '' file; do
